@@ -1,26 +1,39 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/*
+ * Alças dos vértices do polígono em desenho.
+ *
+ * O Leaflet insere este marcador via `divIcon`, fora da árvore do React, então
+ * as classes utilitárias do Tailwind não são aplicadas aqui — os estilos
+ * precisam ser escritos como CSS comum.
+ */
+.plantio-vertex {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 3px solid #15803d;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+  cursor: grab;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.plantio-vertex:active {
+  cursor: grabbing;
+}
+
+/* O primeiro vértice indica onde o traçado começou. */
+.plantio-vertex--first {
+  background: #15803d;
+  border-color: #ffffff;
+}
+
+/* O Leaflet aplica `outline` próprio ao focar os tiles; remove o realce. */
+.leaflet-container:focus,
+.leaflet-container *:focus {
+  outline: none;
 }

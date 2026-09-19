@@ -1,0 +1,39 @@
+// Esquema de dados do Plant.io — mapeamento de áreas de plantio de mudas.
+// Documentação: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// Uma área de plantio delimitada no mapa por um polígono de coordenadas
+/// geográficas (WGS84). Área, perímetro e centro são calculados na aplicação
+/// no momento do desenho e persistidos para evitar recálculo a cada listagem.
+model PlantingArea {
+  id          String  @id @default(cuid())
+  name        String
+  species     String?
+  description String?
+
+  /// PLANEJADA | EM_PLANTIO | PLANTADA | CONCLUIDA
+  /// SQLite não possui tipo ENUM; a validação é feita na camada de aplicação.
+  status String @default("PLANEJADA")
+
+  /// Polígono serializado como JSON: [[lat, lng], [lat, lng], ...]
+  /// SQLite não suporta listas escalares nem tipos geoespaciais.
+  coordinates String
+
+  areaM2     Float
+  perimeterM Float
+  centerLat  Float
+  centerLng  Float
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+}

@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/app/generated/prisma
+
+# banco local (SQLite)
+/dev.db
+/dev.db-journal
+/prisma/dev.db
+
+# exceção: template de variáveis de ambiente deve ser versionado
+!.env.example
