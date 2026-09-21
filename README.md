@@ -84,6 +84,8 @@ app/
 lib/
   geo.ts                      Cálculos geodésicos e formatação
   areas.ts                    Tipos, situações e validação (Zod)
+  map-view.ts                 Decide o enquadramento de abertura do mapa
+  ip-location.ts              Região aproximada de quem acessa, pelo IP
   queries.ts                  Leitura das áreas do banco
   prisma.ts                   Conexão com o banco
 prisma/
@@ -137,6 +139,17 @@ A política de uso do Nominatim exige que a aplicação se identifique em cada
 requisição. Intermediar a chamada em `app/api/geocode/route.ts` permite enviar
 esse cabeçalho e aproveitar o cache do Next.js entre buscas repetidas.
 
+**Por que o mapa abre na região de quem acessa?**
+Abrir sempre na visão nacional obrigava o usuário a navegar ou pesquisar antes
+de qualquer coisa. O enquadramento de abertura agora segue uma ordem de
+preferência: as áreas já cadastradas, que são o dado mais preciso disponível;
+não havendo nenhuma, a região deduzida do IP; e, se a consulta falhar, o centro
+do Brasil. A decisão é tomada no servidor (`lib/map-view.ts`), antes da primeira
+renderização, para que o mapa já nasça no lugar certo em vez de saltar depois de
+carregado. A consulta por IP tem prazo de 1,5 s e qualquer falha apenas cai no
+enquadramento seguinte. A localização precisa do aparelho continua sendo pedida
+só quando o usuário clica no botão ◎.
+
 **Por que existe `overrides` no `package.json`?**
 O adaptador SQLite do Prisma aceita a versão 12 do `better-sqlite3`, que precisa
 compilar código nativo durante a instalação. A versão 13 distribui binários já
@@ -149,6 +162,9 @@ previsível. O `overrides` faz todas as dependências usarem essa versão.
   editá-las. O sistema pressupõe uso local ou em rede confiável.
 - **Sem detecção de sobreposição**: nada impede cadastrar duas áreas que ocupem
   o mesmo terreno.
+- **Localização por IP aproximada**: o IP costuma indicar a cidade da operadora,
+  não a do usuário, e erra por completo atrás de VPN, proxy ou rede móvel. Por
+  isso ela só define o enquadramento inicial do mapa, com zoom de município.
 - **Precisão**: os cálculos tratam a Terra como uma esfera. A diferença em
   relação ao elipsoide WGS84 fica abaixo de 0,5% e é irrelevante na escala de um
   talhão, mas não substitui um levantamento topográfico.

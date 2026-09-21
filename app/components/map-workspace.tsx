@@ -7,9 +7,10 @@ import { createArea, deleteArea, updateArea } from "@/app/actions";
 import AreaForm, { type AreaFormValues } from "@/app/components/area-form";
 import AreaList from "@/app/components/area-list";
 import LocationSearch from "@/app/components/location-search";
-import type { MapFocus, MapMode } from "@/app/components/planting-map";
+import type { MapMode } from "@/app/components/planting-map";
 import type { PlantingAreaView } from "@/lib/areas";
 import { distanceM, formatArea, type LatLngTuple } from "@/lib/geo";
+import type { MapView } from "@/lib/map-view";
 
 // O Leaflet manipula o DOM diretamente e acessa `window` na importação, por
 // isso o mapa só pode ser carregado no navegador.
@@ -33,9 +34,11 @@ const MIN_VERTEX_DISTANCE_M = 1;
 
 type Props = {
   areas: PlantingAreaView[];
+  /** Enquadramento de abertura, resolvido no servidor. */
+  initialView: MapView;
 };
 
-export default function MapWorkspace({ areas }: Props) {
+export default function MapWorkspace({ areas, initialView }: Props) {
   const [mode, setMode] = useState<MapMode>("idle");
   const [draft, setDraft] = useState<LatLngTuple[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -47,7 +50,7 @@ export default function MapWorkspace({ areas }: Props) {
   // Cada pedido de reposicionamento recebe um número crescente para que o mapa
   // reaja mesmo quando o destino é igual ao anterior.
   const focusToken = useRef(0);
-  const [focus, setFocus] = useState<(MapFocus & { token: number }) | null>(
+  const [focus, setFocus] = useState<(MapView & { token: number }) | null>(
     null,
   );
 
@@ -61,7 +64,7 @@ export default function MapWorkspace({ areas }: Props) {
     [areas],
   );
 
-  function moveCamera(target: MapFocus) {
+  function moveCamera(target: MapView) {
     focusToken.current += 1;
     setFocus({ ...target, token: focusToken.current });
   }
@@ -258,6 +261,7 @@ export default function MapWorkspace({ areas }: Props) {
           selectedId={selectedId}
           mode={mode}
           draft={draft}
+          initialView={initialView}
           focus={focus}
           onMapClick={addVertex}
           onVertexDrag={moveVertex}

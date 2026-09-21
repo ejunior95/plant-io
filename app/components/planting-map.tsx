@@ -6,24 +6,31 @@ import "leaflet/dist/leaflet.css";
 
 import { STATUS_COLORS, type PlantingAreaView } from "@/lib/areas";
 import type { LatLngTuple } from "@/lib/geo";
-
-/** Centro aproximado do Brasil, usado quando ainda não há áreas cadastradas. */
-const DEFAULT_CENTER: LatLngTuple = [-15.78, -47.93];
-const DEFAULT_ZOOM = 4;
+import { BRAZIL_VIEW, type MapView } from "@/lib/map-view";
 
 export type MapMode = "idle" | "drawing" | "editing";
 
-export type MapFocus =
-  | { kind: "point"; center: LatLngTuple; zoom: number }
-  | { kind: "bounds"; points: LatLngTuple[] };
+/** Leva a câmera até o enquadramento pedido. */
+function applyView(map: L.Map, view: MapView) {
+  if (view.kind === "point") {
+    map.setView(view.center, view.zoom);
+    return;
+  }
+
+  if (view.points.length > 0) {
+    map.fitBounds(L.latLngBounds(view.points), { padding: [48, 48] });
+  }
+}
 
 type Props = {
   areas: PlantingAreaView[];
   selectedId: string | null;
   mode: MapMode;
   draft: LatLngTuple[];
+  /** Onde o mapa abre. Lido apenas na criação; depois use `focus`. */
+  initialView: MapView;
   /** Muda de identidade a cada pedido de reposicionamento da câmera. */
-  focus: (MapFocus & { token: number }) | null;
+  focus: (MapView & { token: number }) | null;
   onMapClick: (point: LatLngTuple) => void;
   onVertexDrag: (index: number, point: LatLngTuple) => void;
   onVertexClick: (index: number) => void;
@@ -35,12 +42,18 @@ export default function PlantingMap({
   selectedId,
   mode,
   draft,
+  initialView,
   focus,
   onMapClick,
   onVertexDrag,
   onVertexClick,
   onAreaClick,
 }: Props) {
+  // O Leaflet lê este valor só na criação do mapa. Guardá-lo em uma ref deixa
+  // explícito que uma mudança posterior não recria o mapa, e mantém o efeito de
+  // criação sem dependências.
+  const initialViewRef = useRef(initialView);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const areaLayerRef = useRef<L.LayerGroup | null>(null);
@@ -76,11 +89,15 @@ export default function PlantingMap({
     if (!containerRef.current || mapRef.current) return;
 
     const map = L.map(containerRef.current, {
-      center: DEFAULT_CENTER,
-      zoom: DEFAULT_ZOOM,
+      center: BRAZIL_VIEW.center,
+      zoom: BRAZIL_VIEW.zoom,
       zoomControl: true,
       attributionControl: true,
     });
+
+    // Antes da camada de tiles, para que os primeiros blocos pedidos à rede já
+    // sejam os da região certa em vez dos do Brasil inteiro.
+    applyView(map, initialViewRef.current);
 
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
@@ -97,8 +114,12 @@ export default function PlantingMap({
     draftLayerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
 
-    // O contêiner pode ter sido medido antes de o layout estabilizar.
-    const timer = window.setTimeout(() => map.invalidateSize(), 0);
+    // O contêiner pode ter sido medido antes de o layout estabilizar. O
+    // enquadramento por retângulo depende do tamanho real, então é refeito aqui.
+    const timer = window.setTimeout(() => {
+      map.invalidateSize();
+      applyView(map, initialViewRef.current);
+    }, 0);
 
     return () => {
       window.clearTimeout(timer);
@@ -222,14 +243,7 @@ export default function PlantingMap({
     const map = mapRef.current;
     if (!map || !focus) return;
 
-    if (focus.kind === "point") {
-      map.setView(focus.center, focus.zoom);
-      return;
-    }
-
-    if (focus.points.length > 0) {
-      map.fitBounds(L.latLngBounds(focus.points), { padding: [48, 48] });
-    }
+    applyView(map, focus);
   }, [focus]);
 
   return <div ref={containerRef} className="h-full w-full" />;

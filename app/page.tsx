@@ -1,4 +1,6 @@
 import MapWorkspace from "@/app/components/map-workspace";
+import { lookupIpLocation } from "@/lib/ip-location";
+import { resolveInitialView } from "@/lib/map-view";
 import { listAreas } from "@/lib/queries";
 
 /**
@@ -9,7 +11,12 @@ import { listAreas } from "@/lib/queries";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const areas = await listAreas();
+  // As duas leituras são independentes: em paralelo, a consulta por IP não soma
+  // sua latência à do banco.
+  const [areas, ipLocation] = await Promise.all([
+    listAreas(),
+    lookupIpLocation(),
+  ]);
 
   return (
     <div className="flex h-dvh flex-col">
@@ -29,7 +36,10 @@ export default async function Home() {
         </div>
       </header>
 
-      <MapWorkspace areas={areas} />
+      <MapWorkspace
+        areas={areas}
+        initialView={resolveInitialView(areas, ipLocation)}
+      />
     </div>
   );
 }
